@@ -4,7 +4,6 @@ import tempfile
 import logging
 import traceback
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 
 def process_directory(target_path, base_folder, file_types):
@@ -21,27 +20,25 @@ def process_directory(target_path, base_folder, file_types):
         list: A list of tuples containing file paths and their content.
     """
     files = []
-    valid_extensions = {  # Map file types to corresponding extensions
+    valid_extensions = { 
         "py": ".py",
         "rst": ".rst"
     }
     
-    # Get extensions based on the provided file types
+
     if file_types is None:
         filetypes_to_include_in_processing = list(valid_extensions.values())
     else:
-        # Get extensions based on the provided file types
         filetypes_to_include_in_processing = [valid_extensions[file_type] for file_type in file_types if file_type in valid_extensions]
                                  
 
     for root, _, filenames in os.walk(target_path):
         for filename in filenames:
-            if any(filename.endswith(ext) for ext in filetypes_to_include_in_processing):  # Check against valid extensions
+            if any(filename.endswith(ext) for ext in filetypes_to_include_in_processing):
                 # Generate the full path and strip everything before the base folder
                 full_path = os.path.join(root, filename)
                 stripped_path = os.path.relpath(full_path, target_path)  # Keep file path relative to `target_path`
-                modified_path = os.path.join(base_folder, stripped_path).replace("\\", "/")  # Use consistent `/` as separator
-                
+                modified_path = os.path.join(base_folder, stripped_path).replace("\\", "/") 
                 # Read file content
                 try:
                     with open(full_path, 'r', encoding='utf-8') as file:
@@ -49,7 +46,7 @@ def process_directory(target_path, base_folder, file_types):
                     files.append((modified_path, content))
                 except Exception as e:
                     logging.error(f"Failed to read file: {full_path}, Error: {e}")
-                    files.append((modified_path, None))  # Append None for content if error occurs
+                    files.append((modified_path, None)) 
     return files
 
 

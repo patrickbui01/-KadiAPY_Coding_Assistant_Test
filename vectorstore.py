@@ -1,7 +1,6 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 
-# Setup Vectorstore
 def setup_vectorstore(docs, embedding_model,  persist_directory,):
     print("Start setup_vectorstore_function")
     vectorstore = get_chroma_vectorstore(embedding_model, persist_directory)

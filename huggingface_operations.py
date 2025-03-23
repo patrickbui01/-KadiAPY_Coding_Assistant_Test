@@ -8,15 +8,14 @@ def upload_folder_to_huggingface(folder_path, hf_repo_id, hf_repo_type, vectorst
 
     print(f"Uploading folder: {folder_path} to repo: {hf_repo_id} (type: {hf_repo_type})")
 
-    # Capture the response from the upload_folder method
     response = api.upload_folder(
         folder_path=folder_path,
-        path_in_repo=vectorstore_path,  # Optional subpath inside the repo
+        path_in_repo=vectorstore_path,  
         repo_id=hf_repo_id,
         repo_type=hf_repo_type
     )
     
-    # Optionally print or return the response
+
     print("Upload completed with response:", response)
     return response
 
@@ -27,8 +26,6 @@ def delete_folder_from_huggingface(path_in_repo, repo_id, repo_type=None):
     api = HfApi()
 
     print(f"Deleting folder: {path_in_repo} from repo: {repo_id} (type: {repo_type})")
-
-    # Use the Hugging Face API to delete the folder
     response = api.delete_folder(
         path_in_repo=path_in_repo,
         repo_id=repo_id,
@@ -52,10 +49,10 @@ def check_folder_exists(repo_id, folder_path):
     
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Raise HTTPError for bad responses (4xx, 5xx)
+        response.raise_for_status()  
         return response.status_code == 200
     except requests.exceptions.HTTPError as http_err:
-        if response.status_code == 404:  # Handle 404 error specifically
+        if response.status_code == 404: 
             print(f"Error 404: The folder '{folder_path}' does not exist in the repository '{repo_id}'.")
             return False
         else:

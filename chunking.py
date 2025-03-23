@@ -51,8 +51,7 @@ def _generate_code_chunks_with_metadata(code_file_content, code_file_path):
     It invokes the iterate_ast function.
     """
     documents = []
-   #print(f"Processing file: {file_path}")
-  
+
     _iterate_ast(code_file_content, documents, code_file_path)
     # Determine usage based on the file_path
 
@@ -68,12 +67,10 @@ def _generate_code_chunks_with_metadata(code_file_content, code_file_path):
         directory = "undefined"
         usage = "undefined"
         
-    # Add metadata-type "usage" to all documents
     for doc in documents:
         doc.metadata["source"] = code_file_path
         doc.metadata["directory"] = directory
-        doc.metadata["usage"] = usage  # Add the determined usage metadata
-        #print(doc)
+        doc.metadata["usage"] = usage  
     return documents
 
 def _iterate_ast(code_file_content, documents, code_file_path):
@@ -185,10 +182,7 @@ def _handle_not_defined_case(ast_node, code_file_content):
     lines = code_file_content.splitlines()
     undefined_content = "\n".join(lines[start_line - 1:end_line])
 
-    # Metadata for undefined type
     metadata = {"type": "undefined"}
-
-    # Create and return a Document
     doc = Document(
         page_content=undefined_content,
         metadata=metadata
@@ -246,10 +240,8 @@ def _chunk_first_level_assign_node(ast_node, code_file_content):
     assign_end_line = ast_node.end_lineno
     assign_source = '\n'.join(code_file_content.splitlines()[assign_start_line-1:assign_end_line])
 
-    # Create metadata without imports
     metadata = {"type": "Assign"}
 
-    # Create and store Document for the assignment
     doc = Document(
         page_content=assign_source,
         metadata=metadata
@@ -270,10 +262,8 @@ def _chunk_import_only_code_file_content(code_file_content, code_file_path):
     else:
         type = "undefined"
 
-    # Create metadata without imports
     metadata = {"type": type}
 
-    # Create and store a Document with the full source code
     doc = Document(
         page_content=code_file_content,
         metadata=metadata
@@ -291,10 +281,8 @@ def _chunk_nodeless_code_file_content(code_file_content, code_file_path):
     else:
         type = "undefined"
 
-    # Create metadata without imports
     metadata = {"type": type}
 
-    # Create and store a Document with the full source code
     doc = Document(
         page_content=code_file_content,
         metadata=metadata
