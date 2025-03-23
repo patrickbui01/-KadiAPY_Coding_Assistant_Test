@@ -179,9 +179,9 @@ class UpdatePipeline:
         v2 = Version(version2.lstrip('v'))
         
         if v1 > v2:
-            return True  # Returns True only if version1 is newer
+            return True  
         else:
-            return False  # Returns False if versions are equal or version1 is older
+            return False 
 
     def get_kadiAPY_latest_release_version_tag(self):
         gitlab_api_url = self.gitlab_hf_settings["gitlab_parameters"]["api_url"]

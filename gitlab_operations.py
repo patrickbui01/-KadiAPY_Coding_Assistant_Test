@@ -26,26 +26,22 @@ def download_gitlab_repo(gitlab_api_url, project_id, version, target_dir):
         str: The path where the file was saved, or None if the download failed.
     """
     try:
-        # Encode the project ID to handle special characters
         encoded_project_id = urllib.parse.quote(project_id, safe="")
 
-        # Construct the URL to download the archive
         url = f"{gitlab_api_url}/projects/{encoded_project_id}/repository/archive.zip?sha={version}"
         logging.info(f"Constructed URL: {url}")
 
-        # Send GET request to download the zip file
         response = requests.get(url, stream=True)
         logging.info(f"HTTP GET Request sent to {url}, Status Code: {response.status_code}")
 
         if response.status_code == 200:
-            # Create the directory if it doesn't exist
+
             os.makedirs(target_dir, exist_ok=True)
 
             # Generate the filename dynamically
-            filename = f"{project_id.replace('/', '_')}_{version}.zip"  # Example: group_project-name_v1.0.0.zip
+            filename = f"{project_id.replace('/', '_')}_{version}.zip" 
             target_path = os.path.join(target_dir, filename)
 
-            # Save the content of the zip file
             with open(target_path, "wb") as file:
                 for chunk in response.iter_content(chunk_size=8192):
                     file.write(chunk)
@@ -74,7 +70,7 @@ def get_latest_release_version_tag(gitlab_url, project_id):
     if response.status_code == 200:
         releases = response.json()
         if releases:
-            latest_release = releases[0]  # Assuming releases are ordered by date (latest first)
+            latest_release = releases[0] 
             latest_version = latest_release['tag_name']
             return latest_version
         else:

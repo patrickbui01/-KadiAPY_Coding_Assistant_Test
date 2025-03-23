@@ -1,18 +1,18 @@
 import logging
 from update_pipeline import UpdatePipeline
-from config_loader import ConfigLoader  # Assuming ConfigLoader is in a module named config_loader
+from config_loader import ConfigLoader
 
-# Configure logging
+
 logging.basicConfig(
-    level=logging.INFO,  # You can use DEBUG for more detailed output
+    level=logging.INFO,  
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-def main():
-    # Initialize the configuration loader and load the configuration    
+
+def main(): 
     config = ConfigLoader("config_files/gitlab_hf_settings.json").load()
     hf_repo_id = config.get("huggingface_parameters", {}).get("hf_repo_id", "unknown_repo")
-    
+
     logging.info("Initializing the update pipeline.")
     update_pipeline = UpdatePipeline("config_files/gitlab_hf_settings.json", "config_files/datasets_config.json", "update_history.json")
 
