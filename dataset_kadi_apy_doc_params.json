@@ -1,8 +1,0 @@
-{
-    "dataset": "kadi_apy_docs",
-    "folder": ["/docs"],
-    "chunking": {
-        "chunking_size": 512,
-        "chunking_overlap": 128
-    }
-}

@@ -1,0 +1,16 @@
+{
+    "datasets": {
+        "kadi_apy_source_code": {
+            "dataset": "kadi_apy_source_code",
+            "folder": "/kadi_apy"
+        },
+        "kadi_apy_docs": {
+            "dataset": "kadi_apy_docs",
+            "folder": ["/docs"],
+            "chunking": {
+                "chunking_size": 512,
+                "chunking_overlap": 128
+            }
+        }
+    }
+}
