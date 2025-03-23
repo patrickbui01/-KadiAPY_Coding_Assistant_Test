@@ -70,7 +70,6 @@ def extract_and_process_zip(folder_paths, zip_path, filter_filetypes = None):
     matched_contents = []
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            logging.info(f"Extracting zip file to temporary directory: {temp_dir}")
             
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_dir)
@@ -83,7 +82,6 @@ def extract_and_process_zip(folder_paths, zip_path, filter_filetypes = None):
 
                 for folder_path in folder_paths:
                     if folder_path.lstrip("/") in relative_path:
-                        logging.info(f"Match found: {relative_path}")
 
                         base_folder = folder_path.lstrip("/")
                         files = process_directory(root, base_folder, filter_filetypes)
@@ -102,22 +100,3 @@ def extract_and_process_zip(folder_paths, zip_path, filter_filetypes = None):
         logging.error(traceback.format_exc())
 
     return matched_contents, matched_paths
-
-
-
-
-
-
-
-
-# folder_paths = ["/kadi_apy"]
-# zip_path = r"C:\Users\Anwender\Downloads\kadi-apy-v0.45.0.zip"
-# file_types = ["python"]  # Specify desired file types as a list
-
-# matched_paths, matched_contents = extract_and_process_zip(folder_paths, zip_path, file_types)
-
-# print(len(matched_paths))
-# print(len(matched_paths))
-# Calculate the total count of matched files with content saved
-# total_files = len(matched_files)
-# logging.info(f"Total number of matched files with content saved: {total_files}")

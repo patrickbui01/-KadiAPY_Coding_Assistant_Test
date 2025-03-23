@@ -1,8 +1,13 @@
 {
   "update_history": [
     {
-      "update_date": "2025-03-23T18:37:04+01:00",
+      "update_date": "2025-03-23T22:32:18+01:00",
       "project_release_version": "v0.45.0",
+      "deployed_to_hf_repo": "bupa1018/KadiAPY_Coding_Assistant"
+    },
+    {
+      "update_date": "2025-03-23T18:37:04+01:00",
+      "project_release_version": "v0.44.0",
       "deployed_to_hf_repo": "bupa1018/KadiAPY_Coding_Assistant"
     },
     {

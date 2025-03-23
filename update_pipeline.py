@@ -11,9 +11,9 @@ from datetime import datetime, timedelta, timezone
 import time
 import tempfile
 import json
-
-
-   
+import shutil
+import logging
+  
 class UpdatePipeline:
 
     def __init__(self, gitlab_hf_settings, dataset_params_path, update_history_path):
@@ -37,35 +37,57 @@ class UpdatePipeline:
             return True, latest_release_version_tag  
         else:
             return False, deployed_release_version_tag
-        
+
     def start_update_pipeline(self):
+        logging.info("Starting the update pipeline.")
+        
         with tempfile.TemporaryDirectory() as temp_dir:
-            print(f"Temporary directory created: {temp_dir}")
+            logging.info(f"Temporary directory created: {temp_dir}")
             
             # Call the download method and unpack the dictionary
+            logging.info("Downloading the latest KadiAPY repository for processing.")
             result = self.download_latest_kadiAPY_repo_for_processing(temp_dir)
             target_path_zip_file = result["target_path_zip_file"]
             version_number = result["version_number"]
+            logging.info(f"Download completed. Target path: {target_path_zip_file}, Version: {version_number}")
 
+            logging.info("Extracting KadiAPY documentation dataset.")
             kadiAPY_doc_files_content, kadiAPY_doc_files_path = self.get_kadiAPY_doc_dataset(target_path_zip_file)
-            print("1:", len(kadiAPY_doc_files_content))
+            logging.info(f"Number of documentation files extracted: {len(kadiAPY_doc_files_content)}")
+            
+            logging.info("Extracting KadiAPY library dataset.")
             kadiAPY_library_files_content, kadiAPY_library_files_path = self.get_kadiAPY_library_dataset(target_path_zip_file)
-            print("2:", len(kadiAPY_library_files_content))
+            logging.info(f"Number of library files extracted: {len(kadiAPY_library_files_content)}")
 
-
+            logging.info("Chunking KadiAPY documentation files.")
             kadiAPY_doc_documents = self.chunk_kadiAPY_doc_dataset(kadiAPY_doc_files_content, kadiAPY_doc_files_path)
-            print("3:", len(kadiAPY_doc_documents))
-
+            logging.info(f"Number of document chunks created: {len(kadiAPY_doc_documents)}")
+            
+            logging.info("Chunking KadiAPY library files.")
             kadiAPY_library_documents = self.chunk_kadiAPY_library_files_dataset(kadiAPY_library_files_content, kadiAPY_library_files_path)
-            print("4:", len(kadiAPY_library_documents))
+            logging.info(f"Number of library chunks created: {len(kadiAPY_library_documents)}")
 
-        # temp_dir2 = tempfile.mkdtemp()
-        # self.embed_documents_into_vectorstore(kadiAPY_doc_documents + kadiAPY_library_documents, get_sfr_embedding_model(), temp_dir2)
-        # self.delete_vectorstore_folder_from_huggingface()
-        # self.upload_folder_to_hf(temp_dir2)
-        # time.sleep(2)
-        # shutil.rmtree(temp_dir, ignore_errors=True)
-        # self.update_vectorstore_history(version_number)
+        temp_dir2 = tempfile.mkdtemp()
+        logging.info(f"Temporary directory created for vectorstore: {temp_dir2}")
+        
+        logging.info("Embedding documents into vectorstore starting.")
+        self.embed_documents_into_vectorstore(kadiAPY_doc_documents + kadiAPY_library_documents, get_sfr_embedding_model(), temp_dir2)
+        logging.info("Embedding documents into vectorstore finished.")
+
+        logging.info("Deleting existing vectorstore folder from Hugging Face.")
+        self.delete_vectorstore_folder_from_huggingface()
+        
+        logging.info("Uploading the new vectorstore to Hugging Face.")
+        self.upload_folder_to_hf(temp_dir2)
+        time.sleep(2)
+        
+        logging.info("Cleaning up temporary directory.")
+        shutil.rmtree(temp_dir2, ignore_errors=True)
+        
+        logging.info("Updating vectorstore history.")
+        self.update_vectorstore_history(version_number)
+
+        logging.info("Update pipeline completed successfully.")
 
     def update_vectorstore_history(self, version_number):
         local_offset_seconds = time.localtime().tm_gmtoff
@@ -105,9 +127,6 @@ class UpdatePipeline:
         hf_repo_id = self.gitlab_hf_settings["huggingface_parameters"]["hf_repo_id"]
         hf_repo_type = self.gitlab_hf_settings["huggingface_parameters"]["hf_repo_type"]
         hf_vectorstore_path = self.gitlab_hf_settings["huggingface_parameters"]["hf_vectorstore_path"]
-
-        upload_folder_to_huggingface(temp_dir, hf_repo_id, hf_repo_type, hf_vectorstore_path)
-
         upload_folder_to_huggingface(temp_dir, hf_repo_id, hf_repo_type, hf_vectorstore_path)
 
     def embed_documents_into_vectorstore(self, documents, embedding_model, persist_directory):
@@ -147,15 +166,12 @@ class UpdatePipeline:
                 doc.metadata["dataset_category"] = dataset_name
         return documents
 
-
     def get_deployed_vectorstore_version_tag(self):
         """Read the used gitlab_project_version from the first entry in the JSON file."""
         data = ConfigLoader(self.update_history_path).load()
 
         first_entry = data["update_history"][0] 
         return first_entry["project_release_version"]  
-
-
 
     def is_newer_version_available(self, version1, version2):
         """Compare two versions and check if version1 is newer than version2."""
