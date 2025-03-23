@@ -2,10 +2,6 @@ from langchain_huggingface import HuggingFaceEmbeddings
 import torch
 
 
-
-
-
-
 def get_hf_embedding_model(model_name=None):
     """Retrieve a Hugging Face embedding model using the specified model name.."""
 

@@ -53,7 +53,7 @@ def process_directory(target_path, base_folder, file_types):
     return files
 
 
-def extract_and_process_zip(folder_paths, zip_path, file_types = None):
+def extract_and_process_zip(folder_paths, zip_path, filter_filetypes = None):
     """
     Unzips a file to a temporary directory, walks through subdirectories, and matches specified folder paths.
     Processes files of the specified types.
@@ -61,7 +61,7 @@ def extract_and_process_zip(folder_paths, zip_path, file_types = None):
     Parameters:
         folder_paths (list): A list of subdirectory paths to match within the unzipped content.
         zip_path (str): The path to the zip file to process.
-        file_types (list): A list of file types to include (e.g., ["python", "rst"]).
+        filter_filetypes (list): A list of file types to include (e.g., ["python", "rst"]).
 
     Returns:
         list: A list of tuples containing modified paths and their content for matched files.
@@ -86,7 +86,7 @@ def extract_and_process_zip(folder_paths, zip_path, file_types = None):
                         logging.info(f"Match found: {relative_path}")
 
                         base_folder = folder_path.lstrip("/")
-                        files = process_directory(root, base_folder, file_types)
+                        files = process_directory(root, base_folder, filter_filetypes)
 
                         for path, content in files:
                             matched_contents.append(content)
