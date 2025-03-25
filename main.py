@@ -25,7 +25,7 @@ def main():
         logging.info("Update pipeline completed successfully.")
     else:
         logging.info(f"No update needed. The vectorstore in Hugging Face repo '{hf_repo_id}' is up-to-date.")
-
+    update_pipeline.start_update_pipeline()
 if __name__ == "__main__":
     logging.info("Starting the script.")
     main()

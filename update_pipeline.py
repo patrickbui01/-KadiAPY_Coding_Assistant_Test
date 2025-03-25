@@ -66,7 +66,7 @@ class UpdatePipeline:
             logging.info("Chunking KadiAPY library files.")
             kadiAPY_library_documents = self.chunk_kadiAPY_library_files_dataset(kadiAPY_library_files_content, kadiAPY_library_files_path)
             logging.info(f"Number of library chunks created: {len(kadiAPY_library_documents)}")
-
+            
         temp_dir2 = tempfile.mkdtemp()
         logging.info(f"Temporary directory created for vectorstore: {temp_dir2}")
         
@@ -145,7 +145,7 @@ class UpdatePipeline:
     def chunk_kadiAPY_library_files_dataset(self, kadiAPY_library_files_content, kadiAPY_library_files_content_path):
         library_params = self.dataset_params["datasets"]["kadi_apy_source_code"]
         dataset_name = library_params["dataset"]
-        kadiAPY_library_documents = chunk_pythoncode_and_add_metadata(kadiAPY_library_files_content, kadiAPY_library_files_content_path)
+        kadiAPY_library_documents = chunk_pythoncode_and_add_metadata(kadiAPY_library_files_content, kadiAPY_library_files_content_path, 1024)
         self.add_dataset_metadata(kadiAPY_library_documents, dataset_name)
         return kadiAPY_library_documents
     

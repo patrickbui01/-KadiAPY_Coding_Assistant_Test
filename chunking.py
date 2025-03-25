@@ -1,27 +1,8 @@
 import ast
 from langchain.schema import Document 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-def chunk_pythoncode_and_add_metadata(code_files_content, code_files_path):
-    chunks = [] 
-    for code_file_content, code_file_path in zip(code_files_content, code_files_path):
-        """
-        Custom made python code splitter, algorithm iterates through child nodes of ast-tree(max child depth = 2)
-        aims to have full body of methods along signature (+ can handle decorators) in a chunk and adds method specific metadata
-        e.g visbility: public, _internal
-            type: "class", "methods", "command"(CLI commands)
-            source: 
-        
-        
-        with the intend to use a filter when retrieving potentaion useful snippets. 
-        
-        
-        """
-        document_chunks = _generate_code_chunks_with_metadata(code_file_content, code_file_path)
-        chunks.extend(document_chunks)   
-    return chunks
-
-
 # Split text into chunks
+
 def chunk_text_and_add_metadata(texts, references, chunk_size, chunk_overlap):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     chunks = []
@@ -40,20 +21,17 @@ def chunk_text_and_add_metadata(texts, references, chunk_size, chunk_overlap):
     return chunks
 
 
-def _generate_code_chunks_with_metadata(code_file_content, code_file_path):
-    """
-    Custom Python Code Splitter
-    chunks python file by length of func/method body
-    aims to have one full method/function in a chunk and full body of a class, but cutting of when first method declaration is met
-    able to handles decorators on methods
-        
-    Entry point method to process the Python file.
-    It invokes the iterate_ast function.
-    """
+def chunk_pythoncode_and_add_metadata(code_files_content, code_files_path, max_chunk_size):
+    chunks = [] 
+    for code_file_content, code_file_path in zip(code_files_content, code_files_path):
+        document_chunks = _generate_code_chunks_with_metadata(code_file_content, code_file_path, max_chunk_size)
+        chunks.extend(document_chunks)   
+    return chunks
+
+def _generate_code_chunks_with_metadata(code_file_content, code_file_path, max_chunk_size):
     documents = []
 
-    _iterate_ast(code_file_content, documents, code_file_path)
-    # Determine usage based on the file_path
+    _iterate_ast(code_file_content, documents, code_file_path, max_chunk_size)
 
     if code_file_path.startswith("kadi_apy"):
         directory = "kadi_apy/"
@@ -73,56 +51,42 @@ def _generate_code_chunks_with_metadata(code_file_content, code_file_path):
         doc.metadata["usage"] = usage  
     return documents
 
-def _iterate_ast(code_file_content, documents, code_file_path):
-    """
-    Parses the AST of the given Python file and delegates
-    handling to specific methods based on node types.
-    """
+def _iterate_ast(code_file_content, documents, code_file_path, max_chunk_size):
     tree = ast.parse(code_file_content, filename=code_file_path)
-
     first_level_nodes = list(ast.iter_child_nodes(tree))
 
-    # Check if there are no first-level nodes
     if not first_level_nodes:
         documents.extend(
-            _chunk_nodeless_code_file_content(code_file_content, code_file_path))
+            _chunk_nodeless_code_file_content(code_file_content, code_file_path, max_chunk_size))
         return
 
     all_imports = all(isinstance(node, (ast.Import, ast.ImportFrom)) for node in first_level_nodes)
 
     if all_imports:
-        # Handle the case where all first-level nodes are import statements
         documents.extend(
-            _chunk_import_only_code_file_content(code_file_content, code_file_path)
+            _chunk_import_only_code_file_content(code_file_content, code_file_path, max_chunk_size)
         )
     else:
-        # Handle the case where first-level nodes contain other types
         for first_level_node in ast.iter_child_nodes(tree):
             if isinstance(first_level_node, ast.ClassDef):
                 documents.extend(
-                    _handle_first_level_class(first_level_node, code_file_content)
+                    _handle_first_level_class(first_level_node, code_file_content, max_chunk_size)
                 )
             elif isinstance(first_level_node, ast.FunctionDef):
                 documents.extend(
-                    _chunk_first_level_func_node(first_level_node, code_file_content)
+                    _chunk_first_level_func_node(first_level_node, code_file_content, max_chunk_size)
                 )
             elif isinstance(first_level_node, ast.Assign):
                 documents.extend(
-                    _chunk_first_level_assign_node(first_level_node, code_file_content)
+                    _chunk_first_level_assign_node(first_level_node, code_file_content, max_chunk_size)
                 )
             else:
                 if not isinstance(first_level_node, (ast.Import, ast.ImportFrom)):
                     documents.extend(
-                        _handle_not_defined_case(first_level_node, code_file_content)
+                        _handle_not_defined_case(first_level_node, code_file_content, max_chunk_size)
                     )
 
-                
-
-
-def _handle_first_level_class(ast_node , code_file_content):
-    """
-    Handles classes at the first level of the AST.
-    """
+def _handle_first_level_class(ast_node, code_file_content, max_chunk_size):
     documents = []
     class_start_line = ast_node.lineno
     class_body_lines = [child.lineno for child in ast_node.body if isinstance(child, ast.FunctionDef)]
@@ -135,14 +99,21 @@ def _handle_first_level_class(ast_node , code_file_content):
         "visibility": "public"
     }
 
-    # Create and store Document for the class
-    doc = Document(
-        page_content=class_source,
-        metadata=metadata
-    )
-    documents.append(doc)
+    if len(class_source) > max_chunk_size:
+        class_chunks = _split_into_chunks(class_source, max_chunk_size)
+        for chunk in class_chunks:
+            doc = Document(
+                page_content=chunk,
+                metadata=metadata
+            )
+            documents.append(doc)
+    else:
+        doc = Document(
+            page_content=class_source,
+            metadata=metadata
+        )
+        documents.append(doc)
 
-    # Handle methods within the class
     for second_level_node in ast.iter_child_nodes(ast_node):
         if isinstance(second_level_node, ast.FunctionDef):
             method_start_line = (
@@ -154,47 +125,34 @@ def _handle_first_level_class(ast_node , code_file_content):
 
             visibility = "internal" if second_level_node.name.startswith("_") else "public"
 
-            doc = Document(
-                page_content=method_source,
-                metadata={
-                    "type": "method",
-                    "method": second_level_node.name,
-                    "visibility": visibility,
-                    "class": ast_node.name
-                }
-            )
-            documents.append(doc)
+            if len(method_source) > max_chunk_size:
+                method_chunks = _split_into_chunks(method_source, max_chunk_size)
+                for chunk in method_chunks:
+                    doc = Document(
+                        page_content=chunk,
+                        metadata={
+                            "type": "method",
+                            "method": second_level_node.name,
+                            "visibility": visibility,
+                            "class": ast_node.name
+                        }
+                    )
+                    documents.append(doc)
+            else:
+                doc = Document(
+                    page_content=method_source,
+                    metadata={
+                        "type": "method",
+                        "method": second_level_node.name,
+                        "visibility": visibility,
+                        "class": ast_node.name
+                    }
+                )
+                documents.append(doc)
 
     return documents
 
-
-def _handle_not_defined_case(ast_node, code_file_content):
-    """
-    Captures all lines corresponding to the given node and creates
-    a Document with metadata for undefined type.
-    """
-    documents = []
-    # Determine the start and end lines of the node
-    start_line = ast_node.lineno
-    end_line = ast_node.end_lineno
-
-    # Extract the relevant lines from the code file content
-    lines = code_file_content.splitlines()
-    undefined_content = "\n".join(lines[start_line - 1:end_line])
-
-    metadata = {"type": "undefined"}
-    doc = Document(
-        page_content=undefined_content,
-        metadata=metadata
-    )
-    documents.append(doc)
-    return documents
-    
-
-def _chunk_first_level_func_node(ast_node, code_file_content):
-    """
-    Handles functions at the first level of the AST.
-    """
+def _chunk_first_level_func_node(ast_node, code_file_content, max_chunk_size):
     documents = []
     function_start_line = (
         ast_node.decorator_list[0].lineno
@@ -220,18 +178,24 @@ def _chunk_first_level_func_node(ast_node, code_file_content):
     else:
         metadata["method"] = ast_node.name
 
-    doc = Document(
-        page_content=function_source,
-        metadata=metadata
-    )
-    documents.append(doc)
+    if len(function_source) > max_chunk_size:
+        function_chunks = _split_into_chunks(function_source, max_chunk_size)
+        for chunk in function_chunks:
+            doc = Document(
+                page_content=chunk,
+                metadata=metadata
+            )
+            documents.append(doc)
+    else:
+        doc = Document(
+            page_content=function_source,
+            metadata=metadata
+        )
+        documents.append(doc)
 
     return documents
 
-
-
-def _chunk_first_level_assign_node(ast_node, code_file_content):
-    
+def _chunk_first_level_assign_node(ast_node, code_file_content, max_chunk_size):
     """
     Handles assignment statements at the first level of the AST.
     """
@@ -242,17 +206,24 @@ def _chunk_first_level_assign_node(ast_node, code_file_content):
 
     metadata = {"type": "Assign"}
 
-    doc = Document(
-        page_content=assign_source,
-        metadata=metadata
-    )
-    documents.append(doc)
+    if len(assign_source) > max_chunk_size:
+        assign_chunks = _split_into_chunks(assign_source, max_chunk_size)
+        for chunk in assign_chunks:
+            doc = Document(
+                page_content=chunk,
+                metadata=metadata
+            )
+            documents.append(doc)
+    else:
+        doc = Document(
+            page_content=assign_source,
+            metadata=metadata
+        )
+        documents.append(doc)
 
     return documents
 
-
-    
-def _chunk_import_only_code_file_content(code_file_content, code_file_path):
+def _chunk_import_only_code_file_content(code_file_content, code_file_path, max_chunk_size):
     """
     Handles cases where the first-level nodes are only imports.
     """
@@ -264,14 +235,24 @@ def _chunk_import_only_code_file_content(code_file_content, code_file_path):
 
     metadata = {"type": type}
 
-    doc = Document(
-        page_content=code_file_content,
-        metadata=metadata
-    )
-    documents.append(doc)
+    if len(code_file_content) > max_chunk_size:
+        import_chunks = _split_into_chunks(code_file_content, max_chunk_size)
+        for chunk in import_chunks:
+            doc = Document(
+                page_content=chunk,
+                metadata=metadata
+            )
+            documents.append(doc)
+    else:
+        doc = Document(
+            page_content=code_file_content,
+            metadata=metadata
+        )
+        documents.append(doc)
+
     return documents
 
-def _chunk_nodeless_code_file_content(code_file_content, code_file_path):
+def _chunk_nodeless_code_file_content(code_file_content, code_file_path, max_chunk_size):
     """
     Handles cases where no top-level nodes are found in the AST.
     """
@@ -283,14 +264,74 @@ def _chunk_nodeless_code_file_content(code_file_content, code_file_path):
 
     metadata = {"type": type}
 
-    doc = Document(
-        page_content=code_file_content,
-        metadata=metadata
-    )
-    documents.append(doc)
+    if len(code_file_content) > max_chunk_size:
+        nodeless_chunks = _split_into_chunks(code_file_content, max_chunk_size)
+        for chunk in nodeless_chunks:
+            doc = Document(
+                page_content=chunk,
+                metadata=metadata
+            )
+            documents.append(doc)
+    else:
+        doc = Document(
+            page_content=code_file_content,
+            metadata=metadata
+        )
+        documents.append(doc)
+
+    return documents
+
+def _handle_not_defined_case(ast_node, code_file_content, max_chunk_size):
+    """
+    Captures all lines corresponding to the given node and creates
+    a Document with metadata for undefined type.
+    """
+    documents = []
+    # Determine the start and end lines of the node
+    start_line = ast_node.lineno
+    end_line = ast_node.end_lineno
+
+    # Extract the relevant lines from the code file content
+    lines = code_file_content.splitlines()
+    undefined_content = "\n".join(lines[start_line - 1:end_line])
+
+    metadata = {"type": "undefined"}
+
+    if len(undefined_content) > max_chunk_size:
+        undefined_chunks = _split_into_chunks(undefined_content, max_chunk_size)
+        for chunk in undefined_chunks:
+            doc = Document(
+                page_content=chunk,
+                metadata=metadata
+            )
+            documents.append(doc)
+    else:
+        doc = Document(
+            page_content=undefined_content,
+            metadata=metadata
+        )
+        documents.append(doc)
 
     return documents
 
 
+def _split_into_chunks(source, max_chunk_size):
+    """Splits source content into smaller chunks of max_chunk_size."""
+    lines = source.splitlines()
+    chunks = []
+    current_chunk = []
+    current_size = 0
 
+    for line in lines:
+        line_size = len(line) + 1  # Add 1 for the newline character
+        if current_size + line_size > max_chunk_size:
+            chunks.append('\n'.join(current_chunk))
+            current_chunk = []
+            current_size = 0
+        current_chunk.append(line)
+        current_size += line_size
 
+    if current_chunk:
+        chunks.append('\n'.join(current_chunk))
+
+    return chunks
