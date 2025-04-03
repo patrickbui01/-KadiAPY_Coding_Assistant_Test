@@ -1,5 +1,4 @@
 import os
-import json
 import gradio as gr
 from huggingface_hub import HfApi, login
 from dotenv import load_dotenv
@@ -7,7 +6,7 @@ from dotenv import load_dotenv
 from llm import get_groq_llm
 from vectorstore import get_chroma_vectorstore
 from embeddings import get_SFR_Code_embedding_model
-from kadiApy_ragchain import KadiApyRagchain
+from kadi_apy_ragchain import KadiApyRagchain
 
 load_dotenv()
 
@@ -87,7 +86,6 @@ def main():
                         examples_per_page=3,
                     )
         
-        # Use the state to persist chat history between interactions
         user_txt.submit(add_text_to_chat_history, [chat_history, user_txt], [chat_history, user_txt]).then(show_history, [chat_history], [chatbot])\
                   .then(kadi_bot.handle_chat, [chat_history], [chatbot])          
         submit_btn.click(add_text_to_chat_history, [chat_history, user_txt], [chat_history, user_txt]).then(show_history, [chat_history], [chatbot])\
