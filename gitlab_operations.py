@@ -5,13 +5,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-import os
-import requests
-import urllib.parse
-import logging
-
-logging.basicConfig(level=logging.INFO)
-
 def download_gitlab_repo(gitlab_api_url, project_id, version, target_dir):
     """
     Downloads the zip file of a released version of a GitLab project.
