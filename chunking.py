@@ -13,7 +13,6 @@ def chunk_text_and_add_metadata(texts, references, chunk_size, chunk_overlap):
                 page_content=chunk,
                 metadata={
                     "source": reference,
-                    "directory": "doc/"
                 }
             ) 
             for chunk in text_splitter.split_text(text)
@@ -32,23 +31,18 @@ def _generate_code_chunks_with_metadata(code_file_content, code_file_path, max_c
     documents = []
 
     _iterate_ast(code_file_content, documents, code_file_path, max_chunk_size)
+    usage = None
+    if code_file_path.startswith("kadi_apy/lib/"):
+        usage = "kadi_apy/lib/"
+    elif code_file_path.startswith("kadi_apy/cli/"):
+        usage = "kadi_apy/cli/"
+      
 
-    if code_file_path.startswith("kadi_apy"):
-        directory = "kadi_apy/"
-        if code_file_path.startswith("kadi_apy/lib/"):
-            usage = "kadi_apy/lib/"
-        elif code_file_path.startswith("kadi_apy/cli/"):
-            usage = "kadi_apy/cli/"
-        else:
-            usage = "kadi_apy/top_level_file.py"
-    else:
-        directory = "undefined"
-        usage = "undefined"
-        
     for doc in documents:
         doc.metadata["source"] = code_file_path
-        doc.metadata["directory"] = directory
-        doc.metadata["usage"] = usage  
+        if usage is not None:
+            doc.metadata["usage"] = usage
+
     return documents
 
 def _iterate_ast(code_file_content, documents, code_file_path, max_chunk_size):

@@ -1,6 +1,5 @@
 import logging
 from update_pipeline import UpdatePipeline
-from config_loader import ConfigLoader
 
 
 logging.basicConfig(
@@ -10,8 +9,6 @@ logging.basicConfig(
 
 
 def main(): 
-    config = ConfigLoader("config_files/gitlab_hf_settings.json").load()
-    hf_repo_id = config.get("huggingface_parameters", {}).get("hf_repo_id", "unknown_repo")
 
     logging.info("Initializing the update pipeline.")
     update_pipeline = UpdatePipeline("config_files/gitlab_hf_settings.json", "config_files/datasets_config.json", "update_history.json")
@@ -24,8 +21,11 @@ def main():
         update_pipeline.start_update_pipeline()
         logging.info("Update pipeline completed successfully.")
     else:
-        logging.info(f"No update needed. The vectorstore in Hugging Face repo '{hf_repo_id}' is up-to-date.")
+        logging.info(f"No update needed. The vectorstore in the Hugging Face repo is up-to-date.")
+    
+
     update_pipeline.start_update_pipeline()
+    
 if __name__ == "__main__":
     logging.info("Starting the script.")
     main()

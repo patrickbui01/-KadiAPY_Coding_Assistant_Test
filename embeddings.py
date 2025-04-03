@@ -14,12 +14,10 @@ def get_hf_embedding_model(model_name=None):
     return embeddings
 
 
-def get_sfr_embedding_model(
+def get_SFR_Code_embedding_model(
     model_name="Salesforce/SFR-Embedding-Code-400M_R", device="auto"
 ):
-    """Get jinaai embedding."""
 
-    # device: cpu or cuda
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
 

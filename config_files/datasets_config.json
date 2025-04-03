@@ -11,6 +11,7 @@
                 "chunking_size": 512,
                 "chunking_overlap": 128
             }
+                        
         }
     }
 }

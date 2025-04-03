@@ -1,9 +1,9 @@
 from process_directory import extract_and_process_zip
 from chunking import chunk_pythoncode_and_add_metadata, chunk_text_and_add_metadata
-from embeddings import get_sfr_embedding_model
+from embeddings import get_SFR_Code_embedding_model
 from gitlab_operations import download_gitlab_repo
 from gitlab_operations import get_latest_release_version_tag
-from config_loader import ConfigLoader
+from config_loader import load_config
 from packaging.version import Version
 from huggingface_operations import upload_folder_to_huggingface, delete_folder_from_huggingface, check_folder_exists
 from langchain.vectorstores import Chroma
@@ -17,15 +17,9 @@ import logging
 class UpdatePipeline:
 
     def __init__(self, gitlab_hf_settings, dataset_params_path, update_history_path):
-        self.gitlab_hf_settings = gitlab_hf_settings
-        self.dataset_params_path = dataset_params_path
+        self.gitlab_hf_settings = load_config(gitlab_hf_settings)
+        self.dataset_params = load_config(dataset_params_path)
         self.update_history_path = update_history_path
-
-        # Preloading configurations for efficiency
-        self.gitlab_hf_settings = ConfigLoader(self.gitlab_hf_settings).load()
-        self.dataset_params = ConfigLoader(self.dataset_params_path).load()
-        self.update_history = ConfigLoader(self.update_history_path).load()
-
 
     def is_update_needed(self):
         latest_release_version_tag = self.get_kadiAPY_latest_release_version_tag()
@@ -41,10 +35,10 @@ class UpdatePipeline:
     def start_update_pipeline(self):
         logging.info("Starting the update pipeline.")
         
+        #creating temporary directory to avoid persisting files on disk
         with tempfile.TemporaryDirectory() as temp_dir:
             logging.info(f"Temporary directory created: {temp_dir}")
             
-            # Call the download method and unpack the dictionary
             logging.info("Downloading the latest KadiAPY repository for processing.")
             result = self.download_latest_kadiAPY_repo_for_processing(temp_dir)
             target_path_zip_file = result["target_path_zip_file"]
@@ -66,12 +60,13 @@ class UpdatePipeline:
             logging.info("Chunking KadiAPY library files.")
             kadiAPY_library_documents = self.chunk_kadiAPY_library_files_dataset(kadiAPY_library_files_content, kadiAPY_library_files_path)
             logging.info(f"Number of library chunks created: {len(kadiAPY_library_documents)}")
-            
+
+        # creating temporary directory to avoid persisting vectorstore files on disk        
         temp_dir2 = tempfile.mkdtemp()
         logging.info(f"Temporary directory created for vectorstore: {temp_dir2}")
         
         logging.info("Embedding documents into vectorstore starting.")
-        self.embed_documents_into_vectorstore(kadiAPY_doc_documents + kadiAPY_library_documents, get_sfr_embedding_model(), temp_dir2)
+        self.embed_documents_into_vectorstore(kadiAPY_doc_documents + kadiAPY_library_documents, get_SFR_Code_embedding_model(), temp_dir2)
         logging.info("Embedding documents into vectorstore finished.")
 
         logging.info("Deleting existing vectorstore folder from Hugging Face.")
@@ -162,13 +157,15 @@ class UpdatePipeline:
 
     def add_dataset_metadata(self, documents, dataset_name):
         for doc in documents:
-            if hasattr(doc, "metadata"):
-                doc.metadata["dataset_category"] = dataset_name
+            doc.metadata["dataset_category"] = dataset_name
+
         return documents
 
     def get_deployed_vectorstore_version_tag(self):
         """Read the used gitlab_project_version from the first entry in the JSON file."""
-        data = ConfigLoader(self.update_history_path).load()
+
+        
+        data = load_config(self.update_history_path)
 
         first_entry = data["update_history"][0] 
         return first_entry["project_release_version"]  
